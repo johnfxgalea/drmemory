@@ -95,6 +95,8 @@ typedef enum {
     UMBRA_MAP_SCALE_DOWN_2X, /** 2 app byte to 1 shadow byte */
     UMBRA_MAP_SCALE_SAME_1X, /** 1 app byte to 1 shadow byte */
     UMBRA_MAP_SCALE_UP_2X,   /** 1 app byte to 2 shadow byte */
+    UMBRA_MAP_SCALE_UP_4X,   /** 1 app byte to 4 shadow bytes */
+    UMBRA_MAP_SCALE_UP_8X,   /** 1 app byte to 8 shadow bytes */
 } umbra_map_scale_t;
 
 /** Check if a shadow memory mapping scale is scale up or down. */

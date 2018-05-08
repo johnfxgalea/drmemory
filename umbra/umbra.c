@@ -149,8 +149,10 @@ umbra_map_create(umbra_map_t **map_out, umbra_map_options_t *ops, uint idx)
     }
     switch (ops->scale) {
     case UMBRA_MAP_SCALE_DOWN_8X:
+    case UMBRA_MAP_SCALE_DOWN_8X:
         map->shift = 3;
         break;
+    case UMBRA_MAP_SCALE_DOWN_4X:
     case UMBRA_MAP_SCALE_DOWN_4X:
         map->shift = 2;
         break;
