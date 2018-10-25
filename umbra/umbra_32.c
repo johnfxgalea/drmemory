@@ -26,16 +26,16 @@
  * In x86 architecture, we used a lookup table based approach.
  */
 
-#include "../framework/drmf.h"
 #include "dr_api.h"
-#include "drmemory_framework.h"
 #include "umbra.h"
 #include "umbra_private.h"
+#include "drmemory_framework.h"
+#include "../framework/drmf.h"
 #include "utils.h"
 #include <string.h> /* for memchr */
 
 #ifdef X64
-#error x86 only
+# error x86 only
 #endif
 
 /***************************************************************************
@@ -62,10 +62,10 @@
 #define APP_BLOCK_SIZE (1 << APP_BLOCK_BITS)
 
 #define SHADOW_TABLE_ENTRIES (1 << (32 - APP_BLOCK_BITS))
-#define SHADOW_TABLE_SIZE (sizeof(ptr_int_t) * SHADOW_TABLE_ENTRIES)
-#define SHADOW_TABLE_OFFSET(addr) ((ptr_uint_t)(addr) & (APP_BLOCK_SIZE - 1))
-#define SHADOW_TABLE_INDEX(addr) ((ptr_uint_t)(addr) >> APP_BLOCK_BITS)
-#define SHADOW_TABLE_APP_BASE(idx) ((ptr_uint_t)(idx) << APP_BLOCK_BITS)
+#define SHADOW_TABLE_SIZE    (sizeof(ptr_int_t)*SHADOW_TABLE_ENTRIES)
+#define SHADOW_TABLE_OFFSET(addr)  ((ptr_uint_t)(addr) & (APP_BLOCK_SIZE-1))
+#define SHADOW_TABLE_INDEX(addr)   ((ptr_uint_t)(addr) >> APP_BLOCK_BITS)
+#define SHADOW_TABLE_APP_BASE(idx) ((ptr_uint_t)(idx)  << APP_BLOCK_BITS)
 
 static ptr_int_t static_shadow_table[SHADOW_TABLE_ENTRIES];
 static bool static_shadow_table_unused = false;
@@ -93,7 +93,8 @@ static void shadow_table_delete_block(umbra_map_t *map, byte *shadow_start) {
     }
 }
 
-static byte *shadow_table_init_redzone(umbra_map_t *map, byte *block) {
+static byte *
+shadow_table_init_redzone(umbra_map_t *map, byte *block) {
     IF_DEBUG(bool ok;)
 
     if (map->options.redzone_size != 0) {
@@ -102,8 +103,8 @@ static byte *shadow_table_init_redzone(umbra_map_t *map, byte *block) {
 
             /* Set redzone permission to be faulty on reads and writes*/
 
-            IF_DEBUG(ok =)
-            dr_memory_protect(block, map->shadow_block_size, DR_MEMPROT_NONE);
+            IF_DEBUG(ok = )
+            dr_memory_protect(block, map->options.redzone_size, DR_MEMPROT_NONE);
             ASSERT(ok, "-w failed: will have inconsistencies in shadow data");
 
         } else {
@@ -118,10 +119,9 @@ static byte *shadow_table_init_redzone(umbra_map_t *map, byte *block) {
 
         if (map->options.make_redzone_faulty) {
 
-            IF_DEBUG(ok =)
+            IF_DEBUG(ok = )
             dr_memory_protect(block + map->shadow_block_size,
-                    map->shadow_block_size,
-                    DR_MEMPROT_NONE);
+                    map->options.redzone_size, DR_MEMPROT_NONE);
             ASSERT(ok, "-w failed: will have inconsistencies in shadow data");
 
         } else {
@@ -133,7 +133,8 @@ static byte *shadow_table_init_redzone(umbra_map_t *map, byte *block) {
     return block;
 }
 
-static byte *shadow_table_create_block(umbra_map_t *map) {
+static byte *
+shadow_table_create_block(umbra_map_t *map) {
     byte *block;
 
     if (map->options.make_redzone_faulty) {
@@ -148,8 +149,10 @@ static byte *shadow_table_create_block(umbra_map_t *map) {
     } else {
 
         block = global_alloc(map->shadow_block_alloc_size, HEAPSTAT_SHADOW);
-        block = shadow_table_init_redzone(map, block);
-    } LOG(UMBRA_VERBOSE, "created new shadow block " PFX "\n", block);
+    }
+
+    block = shadow_table_init_redzone(map, block);
+    LOG(UMBRA_VERBOSE, "created new shadow block "PFX"\n", block);
     return block;
 }
 
@@ -166,8 +169,10 @@ static void shadow_table_delete_special_block(umbra_map_t *map,
 static void shadow_table_delete_default_block(umbra_map_t *map) {
     /* we did not use default block for CREATE_ON_TOUCH */
     if (TEST(UMBRA_MAP_CREATE_SHADOW_ON_TOUCH, map->options.flags)) {
-        ASSERT(map->default_block.start == NULL && map->default_block.value == 0 &&
-                map->default_block.value_size == 0,
+        ASSERT(
+                map->default_block.start == NULL
+                && map->default_block.value == 0
+                && map->default_block.value_size == 0,
                 "default block must be 0");
         return;
     }
@@ -183,24 +188,27 @@ static void shadow_table_create_special_block_helper(umbra_map_t *map,
     block = (byte *) nonheap_alloc(map->shadow_block_alloc_size,
     DR_MEMPROT_READ | DR_MEMPROT_WRITE, HEAPSTAT_SHADOW);
     ASSERT(block != NULL && ALIGNED(block, PAGE_SIZE),
-            "fail to alloc special block"); ASSERT(value_size == 1 && value <= UCHAR_MAX,
+            "fail to alloc special block");
+    ASSERT(value_size == 1 && value <= UCHAR_MAX,
             "NYI: we only support byte-size value now");
+
+
     block = shadow_table_init_redzone(map, block);
     memset(block, value, map->shadow_block_size);
 
     if (map->options.make_redzone_faulty) {
         /* we will never write to the special but also never read redzones */
-        IF_DEBUG(ok =)
+        IF_DEBUG(ok = )
         dr_memory_protect(block, map->shadow_block_size, DR_MEMPROT_READ);
         ASSERT(ok, "-w failed: will have inconsistencies in shadow data");
     } else {
         /* we will never write to the special */
-        IF_DEBUG(ok =)
+        IF_DEBUG(ok = )
         dr_memory_protect(block, map->shadow_block_alloc_size, DR_MEMPROT_READ);
         ASSERT(ok, "-w failed: will have inconsistencies in shadow data");
     }
 
-    LOG(UMBRA_VERBOSE, "created new shadow special block " PFX "\n", block);
+    LOG(UMBRA_VERBOSE, "created new shadow special block "PFX"\n", block);
     special_block->start = block;
     special_block->value = value;
     special_block->value_size = value_size;
@@ -211,8 +219,9 @@ static void shadow_table_create_default_block(umbra_map_t *map) {
             map->options.default_value_size, &map->default_block);
 }
 
-static byte *shadow_table_lookup_special_block(umbra_map_t *map,
-        ptr_uint_t value, size_t value_size) {
+static byte *
+shadow_table_lookup_special_block(umbra_map_t *map, ptr_uint_t value,
+        size_t value_size) {
     int i, num_blks;
     /* assuming we never update or delete a special block, so it is ok
      * to do the racy lookup
@@ -227,8 +236,9 @@ static byte *shadow_table_lookup_special_block(umbra_map_t *map,
     return NULL;
 }
 
-static byte *shadow_table_create_special_block(umbra_map_t *map,
-        ptr_uint_t value, size_t value_size) {
+static byte *
+shadow_table_create_special_block(umbra_map_t *map, ptr_uint_t value,
+        size_t value_size) {
     byte *block;
     int num_blks;
 
@@ -253,19 +263,19 @@ static void shadow_table_set_block(umbra_map_t *map, uint idx, byte *block) {
     ptr_uint_t base = SHADOW_TABLE_APP_BASE(idx);
     base = umbra_map_scale_app_to_shadow(map, base);
     map->shadow_table[idx] = (ptr_uint_t) block - base;
-    LOG(UMBRA_VERBOSE,
-            "setting shadow table idx %d for block " PFX " to " PFX "\n", idx, block,
-            map->shadow_table[idx]);
+    LOG(UMBRA_VERBOSE, "setting shadow table idx %d for block "PFX" to "PFX"\n",
+            idx, block, map->shadow_table[idx]);
 }
 
-static inline byte *shadow_table_get_block(umbra_map_t *map, uint idx) {
+static inline byte *
+shadow_table_get_block(umbra_map_t *map, uint idx) {
     ptr_uint_t base = SHADOW_TABLE_APP_BASE(idx);
     base = umbra_map_scale_app_to_shadow(map, base);
     return (byte *) (map->shadow_table[idx] + base);
 }
 
-static inline byte *shadow_table_app_to_shadow(umbra_map_t *map,
-        app_pc app_addr) {
+static inline byte *
+shadow_table_app_to_shadow(umbra_map_t *map, app_pc app_addr) {
     return (shadow_table_get_block(map, SHADOW_TABLE_INDEX(app_addr))
             + shadow_table_get_block_offset(map, app_addr));
 }
@@ -324,52 +334,57 @@ static void shadow_table_insert_app_to_shadow_arch(void *drcontext,
 static void
 shadow_table_insert_app_to_shadow_arch(void *drcontext, umbra_map_t *map,
         instrlist_t *ilist, instr_t *where,
-        reg_id_t reg_addr, reg_id_t reg_idx) {
+        reg_id_t reg_addr, reg_id_t reg_idx)
+{
     /* %reg_idx = table */
     instrlist_insert_mov_immed_ptrsz(drcontext, (uint)(map->shadow_table),
-            opnd_create_reg(reg_idx), ilist, where, NULL,
-            NULL);
+            opnd_create_reg(reg_idx), ilist, where,
+            NULL, NULL);
 
     /* %reg_idx += (%reg_addr >> 14) */
-    PRE(ilist, where,
-            INSTR_CREATE_add_shimm(
-                    drcontext, opnd_create_reg(reg_idx), opnd_create_reg(reg_idx),
-                    opnd_create_reg(reg_addr), OPND_CREATE_INT(DR_SHIFT_LSR),
+    PRE(ilist, where, INSTR_CREATE_add_shimm(drcontext,
+                    opnd_create_reg(reg_idx),
+                    opnd_create_reg(reg_idx),
+                    opnd_create_reg(reg_addr),
+                    OPND_CREATE_INT(DR_SHIFT_LSR),
                     OPND_CREATE_INT(14)));
 
     /* Can't specify a bitmask of 0xfffffffc, so instead we use its inverse, BIC.
      * %reg_idx &= 0xfffffffc
      */
-    PRE(ilist, where,
-            INSTR_CREATE_bic(drcontext, opnd_create_reg(reg_idx),
-                    opnd_create_reg(reg_idx), OPND_CREATE_INT8(0x03)));
+    PRE(ilist, where, INSTR_CREATE_bic(drcontext,
+                    opnd_create_reg(reg_idx),
+                    opnd_create_reg(reg_idx),
+                    OPND_CREATE_INT8(0x03)));
 
     /* %reg_idx = 0x0(%reg_idx) */
-    PRE(ilist, where,
-            XINST_CREATE_load(drcontext, opnd_create_reg(reg_idx),
+    PRE(ilist, where, XINST_CREATE_load(drcontext,
+                    opnd_create_reg(reg_idx),
                     OPND_CREATE_MEMPTR(reg_idx, 0)));
 
     /* %reg_addr = %reg_idx + (%reg_addr >> map->scale) */
     if (UMBRA_MAP_SCALE_IS_DOWN(map->options.scale)) {
-        PRE(ilist, where,
-                INSTR_CREATE_add_shimm(
-                        drcontext, opnd_create_reg(reg_addr), opnd_create_reg(reg_idx),
-                        opnd_create_reg(reg_addr), OPND_CREATE_INT(DR_SHIFT_LSR),
+        PRE(ilist, where, INSTR_CREATE_add_shimm(drcontext,
+                        opnd_create_reg(reg_addr),
+                        opnd_create_reg(reg_idx),
+                        opnd_create_reg(reg_addr),
+                        OPND_CREATE_INT(DR_SHIFT_LSR),
                         OPND_CREATE_INT(map->shift)));
     } else if (UMBRA_MAP_SCALE_IS_UP(map->options.scale)) {
-        PRE(ilist, where,
-                INSTR_CREATE_add_shimm(
-                        drcontext, opnd_create_reg(reg_addr), opnd_create_reg(reg_idx),
-                        opnd_create_reg(reg_addr), OPND_CREATE_INT(DR_SHIFT_LSL),
+        PRE(ilist, where, INSTR_CREATE_add_shimm(drcontext,
+                        opnd_create_reg(reg_addr),
+                        opnd_create_reg(reg_idx),
+                        opnd_create_reg(reg_addr),
+                        OPND_CREATE_INT(DR_SHIFT_LSL),
                         OPND_CREATE_INT(map->shift)));
     } else {
-        PRE(ilist, where,
-                XINST_CREATE_add(drcontext, opnd_create_reg(reg_addr),
+        PRE(ilist, where, XINST_CREATE_add(drcontext,
+                        opnd_create_reg(reg_addr),
                         opnd_create_reg(reg_idx)));
     }
 }
 #else
-#error NYI
+# error NYI
 #endif
 
 static bool shadow_table_is_in_default_block(umbra_map_t *map,
@@ -439,8 +454,8 @@ static bool shadow_table_use_special_block(umbra_map_t *map, app_pc app_addr,
 
 static bool shadow_table_is_in_normal_block(umbra_map_t *map, byte *shadow_addr) {
     return (!shadow_table_is_in_default_block(map, shadow_addr, NULL)
-            && !shadow_table_is_in_special_block(map, shadow_addr, NULL, NULL,
-                    NULL));
+            && !shadow_table_is_in_special_block(map, shadow_addr,
+            NULL, NULL, NULL));
 }
 
 static void shadow_table_replace_block(umbra_map_t *map, app_pc app_base) {
@@ -467,8 +482,8 @@ static void shadow_table_init(umbra_map_t *map) {
     uint i;
     LOG(UMBRA_VERBOSE, "shadow_table_init\n");
     if (static_shadow_table_unused) {
-        map->shadow_table = nonheap_alloc(
-        SHADOW_TABLE_SIZE, DR_MEMPROT_READ | DR_MEMPROT_WRITE, HEAPSTAT_SHADOW);
+        map->shadow_table = nonheap_alloc(SHADOW_TABLE_SIZE,
+        DR_MEMPROT_READ | DR_MEMPROT_WRITE, HEAPSTAT_SHADOW);
     } else {
         map->shadow_table = static_shadow_table;
     }
@@ -495,7 +510,7 @@ static void shadow_table_exit(umbra_map_t *map) {
     for (i = 0; i < SHADOW_TABLE_ENTRIES; i++) {
         byte *shadow_addr = shadow_table_get_block(map, i);
         if (shadow_table_is_in_normal_block(map, shadow_addr)) {
-            LOG(UMBRA_VERBOSE, "freeing shadow block idx=%d " PFX "\n", i,
+            LOG(UMBRA_VERBOSE, "freeing shadow block idx=%d "PFX"\n", i,
                     shadow_addr);
             shadow_table_delete_block(map, shadow_addr);
         }
@@ -554,8 +569,7 @@ drmf_status_t umbra_map_arch_init(umbra_map_t *map, umbra_map_options_t *ops) {
      * We assume that the shadow block is completely within page sizes.
      * This allows us to set permissions
      */
-    ASSERT(map->shadow_block_size % PAGE_SIZE == 0,
-            "Not within unit of page size");
+    ASSERT(map->shadow_block_size % PAGE_SIZE == 0, "Not within unit of page size");
 
     map->app_block_size = APP_BLOCK_SIZE;
     map->shadow_block_size = umbra_map_scale_app_to_shadow(map, APP_BLOCK_SIZE);
@@ -701,8 +715,7 @@ drmf_status_t umbra_shadow_copy_range_arch(IN umbra_map_t *map,
     drmf_status_t res = DRMF_SUCCESS;
 
     app_sz = app_size_in;
-    if (POINTER_OVERFLOW_ON_ADD(app_src,
-            app_sz - 1) || /* just hitting top is ok */
+    if (POINTER_OVERFLOW_ON_ADD(app_src, app_sz - 1) || /* just hitting top is ok */
     POINTER_OVERFLOW_ON_ADD(app_dst, app_sz - 1)) /* just hitting top is ok */
         return DRMF_ERROR_INVALID_SIZE;
 
@@ -754,7 +767,7 @@ drmf_status_t umbra_value_in_shadow_memory_arch(IN umbra_map_t *map,
     *found = false;
     APP_RANGE_LOOP(*app_addr, app_size, app_blk_base, app_blk_end, app_src_end,
             start, end, iter_size,
-            { if (shadow_table_use_default_block(map, app_blk_base)) return DRMF_ERROR_INVALID_PARAMETER; if (shadow_table_use_special_block(map, app_blk_base, &val, &valsz)) { if (val == value && valsz == value_size) { *app_addr = start; *found = true; return DRMF_SUCCESS; } continue; } shadow_start = shadow_table_app_to_shadow(map, start); shadow_size = umbra_map_scale_app_to_shadow(map, iter_size); shadow_addr = memchr(shadow_start, (int)value, shadow_size); if (shadow_addr != NULL) { *app_addr = start + umbra_map_scale_shadow_to_app( map, shadow_addr - shadow_start); *found = true; return DRMF_SUCCESS; } });
+            { if (shadow_table_use_default_block(map, app_blk_base)) return DRMF_ERROR_INVALID_PARAMETER; if (shadow_table_use_special_block(map, app_blk_base, &val, &valsz)) { if (val == value && valsz == value_size) { *app_addr = start; *found = true; return DRMF_SUCCESS; } continue; } shadow_start = shadow_table_app_to_shadow(map, start); shadow_size = umbra_map_scale_app_to_shadow(map, iter_size); shadow_addr = memchr(shadow_start, (int)value, shadow_size); if (shadow_addr != NULL) { *app_addr = start + umbra_map_scale_shadow_to_app(map, shadow_addr - shadow_start); *found = true; return DRMF_SUCCESS; } });
     return DRMF_SUCCESS;
 }
 
@@ -781,8 +794,8 @@ drmf_status_t umbra_iterate_shadow_memory_arch(umbra_map_t *map,
             continue;
         info.app_size = map->app_block_size;
         info.shadow_size = map->shadow_block_size;
-        if (shadow_table_is_in_special_block(map, info.shadow_base, NULL, NULL,
-        NULL))
+        if (shadow_table_is_in_special_block(map, info.shadow_base,
+        NULL, NULL, NULL))
             info.shadow_type = UMBRA_SHADOW_MEMORY_TYPE_SHARED;
         else
             info.shadow_type = UMBRA_SHADOW_MEMORY_TYPE_NORMAL;
@@ -792,11 +805,11 @@ drmf_status_t umbra_iterate_shadow_memory_arch(umbra_map_t *map,
     return DRMF_SUCCESS;
 }
 
-drmf_status_t umbra_shadow_memory_is_shared_arch( IN umbra_map_t *map,
+drmf_status_t umbra_shadow_memory_is_shared_arch(IN umbra_map_t *map,
         IN byte *shadow_addr, OUT umbra_shadow_memory_type_t *shadow_type) {
     bool redzone;
-    if (shadow_table_is_in_special_block(map, shadow_addr, NULL, NULL,
-            &redzone)) {
+    if (shadow_table_is_in_special_block(map, shadow_addr,
+    NULL, NULL, &redzone)) {
         *shadow_type = UMBRA_SHADOW_MEMORY_TYPE_SHARED;
         if (redzone)
             *shadow_type |= UMBRA_SHADOW_MEMORY_TYPE_REDZONE;
