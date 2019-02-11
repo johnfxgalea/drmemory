@@ -233,10 +233,16 @@ endif (APPLE)
 
 # N.B.: when updating this, update the git tag in .travis.yml.
 # We should find a way to share (xref DRi#1565).
-set(VERSION_NUMBER_DEFAULT "1.11.${VERSION_NUMBER_PATCHLEVEL}")
-# do not store the default TOOL_VERSION_NUMBER in the cache to prevent a stale one
+if (WIN32)
+  # Windows is still missing 64-bit uninitialized read support so we're still calling
+  # it 1.11.xxx.
+  set(VERSION_NUMBER_DEFAULT "1.11.${VERSION_NUMBER_PATCHLEVEL}")
+else ()
+  set(VERSION_NUMBER_DEFAULT "2.0.${VERSION_NUMBER_PATCHLEVEL}")
+endif ()
+# Do not store the default TOOL_VERSION_NUMBER in the cache to prevent a stale one
 # from preventing future version updates in a pre-existing build dir.
-# avoid "VERSION_NUMBER" name since conflics w/ DR's var
+# Avoid "VERSION_NUMBER" name since conflics w/ DR's var.
 set(TOOL_VERSION_NUMBER "" CACHE STRING "Version number: leave empty for default")
 if ("${TOOL_VERSION_NUMBER}" STREQUAL "")
   set(TOOL_VERSION_NUMBER ${VERSION_NUMBER_DEFAULT})
@@ -555,7 +561,9 @@ if (WIN32)
     # We look in both paths (Program Files and Program Files (x86)) because some versions of
     # Visual Studio put dbghelp.dll in progfiles (especially 2008) and some in progfiles32.
     "${PROGFILES}/Microsoft Visual Studio */Common7/IDE/Remote Debugger/${ARCH_SFX}/dbghelp.dll"
-    "${PROGFILES32}/Microsoft Visual Studio */Common7/IDE/Remote Debugger/${ARCH_SFX}/dbghelp.dll")
+    "${PROGFILES32}/Microsoft Visual Studio */Common7/IDE/Remote Debugger/${ARCH_SFX}/dbghelp.dll"
+    "${PROGFILES32}/Microsoft Visual Studio */Common7/Packages/Debugger/${ARCH_SFX}/dbghelp.dll")
+
   if (X64)
     set(dbghelp_paths ${dbghelp_paths}
       # For older versions of windbg, x64 dbghelp.dll resides here.
@@ -604,7 +612,9 @@ if (WIN32)
     # In case if SDK is not installed and we have Visual Studio, symsrv.dll may be found in the
     # same place as dbghelp.dll (see comment for dbghelp.dll) (xref i#1956).
     "${PROGFILES}/Microsoft Visual Studio */Common7/IDE/Remote Debugger/${ARCH_SFX}/symsrv.dll"
-    "${PROGFILES32}/Microsoft Visual Studio */Common7/IDE/Remote Debugger/${ARCH_SFX}/symsrv.dll")
+    "${PROGFILES32}/Microsoft Visual Studio */Common7/IDE/Remote Debugger/${ARCH_SFX}/symsrv.dll"
+    "${PROGFILES32}/Microsoft Visual Studio */Common7/Packages/Debugger/${ARCH_SFX}/symsrv.dll")
+
   if (X64)
     set(symsrv_paths ${symsrv_paths}
       # For older versions of windbg, x64 symsrv.dll resides here.
@@ -809,9 +819,13 @@ else ()
 endif ()
 
 # when updating this, also update the git submodule
-set(DynamoRIO_VERSION_REQUIRED "6.2.17499")
+set(DynamoRIO_VERSION_REQUIRED "7.0.17855")
 
 set(DR_install_dir "dynamorio")
+
+set(DynamoRIO_PAGE_SIZE_COMPATIBILITY ON)
+
+set(DynamoRIO_LOG_COMPATIBILITY ON)
 
 if (USER_SPECIFIED_DynamoRIO_DIR)
   # i#67: relative dirs are not really supported in find_package: they're
@@ -1044,7 +1058,7 @@ endif ()
 
 function (copy_target_to_device target)
   if (DRM_COPY_TO_DEVICE)
-    DynamoRIO_copy_target_to_device(${target} ${DRM_DEVICE_BASEDIR})
+    DynamoRIO_copy_target_to_device(${target} ${DRM_DEVICE_BASEDIR} "${_DR_location_suffix}")
   endif ()
 endfunction (copy_target_to_device)
 
@@ -1062,9 +1076,9 @@ endfunction (copy_file_to_device)
 
 function (get_target_path_for_execution out target)
   if (ANDROID)
-    DynamoRIO_get_target_path_for_execution(local ${target} ${DRM_DEVICE_BASEDIR})
+    DynamoRIO_get_target_path_for_execution(local ${target} ${DRM_DEVICE_BASEDIR} "${_DR_location_suffix}")
   else ()
-    DynamoRIO_get_target_path_for_execution(local ${target} "")
+    DynamoRIO_get_target_path_for_execution(local ${target} "" "${_DR_location_suffix}")
   endif ()
   set(${out} ${local} PARENT_SCOPE)
 endfunction (get_target_path_for_execution)
