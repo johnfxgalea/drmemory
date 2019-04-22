@@ -58,7 +58,7 @@
  * SHADOW TABLE DATA STRUCTURES
  */
 /* We divide the address space into 16-bit (64KB) chunk units */
-#define APP_BLOCK_BITS 16
+#define APP_BLOCK_BITS 21
 #define APP_BLOCK_SIZE (1 << APP_BLOCK_BITS)
 
 #define SHADOW_TABLE_ENTRIES (1 << (32 - APP_BLOCK_BITS))
