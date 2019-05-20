@@ -148,6 +148,8 @@ umbra_map_create(umbra_map_t **map_out, umbra_map_options_t *ops, uint idx)
         return DRMF_ERROR_NOT_IMPLEMENTED;
     }
     switch (ops->scale) {
+    case UMBRA_MAP_SCALE_DOWN_32X:
+        map->shift = 5;
     case UMBRA_MAP_SCALE_DOWN_8X:
     case UMBRA_MAP_SCALE_UP_8X:
         map->shift = 3;

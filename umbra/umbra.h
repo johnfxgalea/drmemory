@@ -90,6 +90,7 @@ enum {
  * 8 if using UMBRA_MAP_SCALE_DOWN_8X mapping scheme.
  */
 typedef enum {
+    UMBRA_MAP_SCALE_DOWN_32X, /** 32 app byte to 1 shadow byte */
     UMBRA_MAP_SCALE_DOWN_8X, /** 8 app byte to 1 shadow byte */
     UMBRA_MAP_SCALE_DOWN_4X, /** 4 app byte to 1 shadow byte */
     UMBRA_MAP_SCALE_DOWN_2X, /** 2 app byte to 1 shadow byte */
