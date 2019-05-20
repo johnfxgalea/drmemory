@@ -58,7 +58,7 @@
  * SHADOW TABLE DATA STRUCTURES
  */
 /* We divide the address space into 16-bit (64KB) chunk units */
-#define APP_BLOCK_BITS 21
+#define APP_BLOCK_BITS 19
 #define APP_BLOCK_SIZE (1 << APP_BLOCK_BITS)
 
 #define SHADOW_TABLE_ENTRIES (1 << (32 - APP_BLOCK_BITS))
@@ -517,6 +517,7 @@ shadow_table_init(umbra_map_t *map)
                                           HEAPSTAT_SHADOW);
     } else {
         map->shadow_table = static_shadow_table;
+        static_shadow_table_unused = true;
     }
     /* sets the whole address space to default special block first */
     if (!TEST(UMBRA_MAP_CREATE_SHADOW_ON_TOUCH, map->options.flags)) {
