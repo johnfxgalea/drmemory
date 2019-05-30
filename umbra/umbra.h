@@ -745,15 +745,6 @@ umbra_shadow_memory_info_init(umbra_shadow_memory_info_t *info)
     info->app_size = 0;
 }
 
-DR_EXPORT
-/**
- * Gathers granularity info
- */
-
-void umbra_get_granularity(const umbra_map_t *map, int *scale,
-        bool *is_scale_down);
-
-
 /*@}*/ /* end doxygen group */
 
 #ifdef __cplusplus
