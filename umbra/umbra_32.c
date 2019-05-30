@@ -729,6 +729,7 @@ umbra_read_shadow_memory_arch(IN    umbra_map_t *map,
         if (shadow_table_is_in_default_block(map, shadow_start, NULL))
             return DRMF_ERROR_INVALID_PARAMETER;
         size = umbra_map_scale_app_to_shadow(map, iter_size);
+
         memcpy(buffer, shadow_start, size);
         shdw_size += size;
         buffer    += size;
