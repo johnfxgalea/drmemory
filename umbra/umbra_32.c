@@ -1088,6 +1088,51 @@ umbra_replace_shared_shadow_memory_arch(umbra_map_t *map,
 }
 
 drmf_status_t
+umbra_collect_redundant_blocks_arch(umbra_map_t *map){
+
+
+    if (!TEST(UMBRA_MAP_CREATE_SHADOW_ON_TOUCH, map->options.flags)) {
+        return DRMF_ERROR;
+    }
+
+    uint i;
+    /* free all the shadow memory */
+    umbra_map_lock(map);
+
+    for (i = 0; i < SHADOW_TABLE_ENTRIES; i++) {
+        byte *shadow_addr = shadow_table_get_block(map, i);
+        if (shadow_table_is_in_normal_block(map, shadow_addr)) {
+
+            bool is_all_default_val = true;
+            int j = 0;
+            while (j < map->shadow_block_size){
+
+                if (shadow_addr[j] != (byte) map->options.default_value){
+                    is_all_default_val = false;
+                    break;
+                }
+
+                j++;
+            }
+
+            if (is_all_default_val) {
+
+                byte *special_block = map->special_blocks[0].start;
+                ASSERT(special_block[0] == (byte) map->options.default_value, "not in synch");
+
+                shadow_table_delete_block(map, shadow_addr);
+                shadow_table_set_block(map, i, special_block);
+
+            }
+        }
+    }
+
+    umbra_map_unlock(map);
+
+    return DRMF_SUCCESS;
+}
+
+drmf_status_t
 umbra_create_shared_shadow_block_arch(IN  umbra_map_t *map,
                                       IN  ptr_uint_t   value,
                                       IN  size_t       value_size,

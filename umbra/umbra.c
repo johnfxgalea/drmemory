@@ -631,6 +631,17 @@ drmf_status_t umbra_get_shared_shadow_block(IN umbra_map_t *map,
 }
 
 DR_EXPORT
+drmf_status_t umbra_collect_redundant_blocks(umbra_map_t *map) {
+
+    if (map == NULL || map->magic != UMBRA_MAP_MAGIC) {
+        ASSERT(false, "invalid umbra_map");
+        return DRMF_ERROR_INVALID_PARAMETER;
+    }
+
+    return umbra_collect_redundant_blocks_arch(map);
+}
+
+DR_EXPORT
 void umbra_get_granularity(const umbra_map_t *map, int *scale,
         bool *is_scale_down) {
 

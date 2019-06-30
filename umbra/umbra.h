@@ -747,9 +747,14 @@ umbra_shadow_memory_info_init(umbra_shadow_memory_info_t *info)
 
 DR_EXPORT
 /**
+ * Clears info.
+ */
+drmf_status_t umbra_collect_redundant_blocks(umbra_map_t *map);
+
+DR_EXPORT
+/**
  * Gathers granularity info
  */
-
 void umbra_get_granularity(const umbra_map_t *map, int *scale,
         bool *is_scale_down);
 

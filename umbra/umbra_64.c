@@ -1285,6 +1285,11 @@ umbra_get_shared_shadow_block_arch(IN  umbra_map_t *map,
     return DRMF_ERROR_FEATURE_NOT_AVAILABLE;
 }
 
+drmf_status_t
+umbra_collect_redundant_blocks_arch(umbra_map_t *map){
+    return DRMF_ERROR_NOT_IMPLEMENTED;
+}
+
 bool
 umbra_handle_fault(void *drcontext, byte *target, dr_mcontext_t *raw_mc,
                    dr_mcontext_t *mc)

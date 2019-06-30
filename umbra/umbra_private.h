@@ -256,10 +256,16 @@ umbra_replace_shared_shadow_memory_arch(umbra_map_t *map,
                                         byte **shadow_addr);
 
 drmf_status_t
+umbra_collect_redundant_blocks_arch(umbra_map_t *map);
+
+drmf_status_t
 umbra_create_shared_shadow_block_arch(IN  umbra_map_t *map,
                                       IN  ptr_uint_t   value,
                                       IN  size_t       value_size,
                                       OUT byte       **block);
+
+drmf_status_t
+umbra_collect_redundant_blocks_arch(umbra_map_t *map);
 
 drmf_status_t
 umbra_get_shared_shadow_block_arch(IN  umbra_map_t *map,
